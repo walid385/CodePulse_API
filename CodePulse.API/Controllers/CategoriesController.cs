@@ -98,7 +98,7 @@ namespace CodePulse.API.Controllers
         [Route("{id:Guid}")]
         public async Task<IActionResult> EditCategory([FromRoute] Guid id, UpdateCategoryRequestDto request)
         {
-            // Domain to DTO
+            // DTO to Domain
 
             var category = new Category
             {
@@ -123,6 +123,29 @@ namespace CodePulse.API.Controllers
 
             return Ok(response);
 
+
+
+        }
+
+        [HttpDelete]
+        [Route("{id:Guid}")]
+        public async Task<IActionResult> DeleteCategory([FromRoute] Guid id)
+        {
+            var category = await categoryRepository.DeleteAsync(id);
+
+            if (category is null)
+            {
+                return NotFound();
+            }
+
+            var response = new CategoryDto
+            {
+                Id = category.Id,
+                Name = category.Name,
+                UrlHandle = category.UrlHandle,
+            };
+
+            return Ok(response);
 
 
         }
