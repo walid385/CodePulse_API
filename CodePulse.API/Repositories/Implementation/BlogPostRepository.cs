@@ -45,6 +45,11 @@ namespace CodePulse.API.Repositories.Implementation
             return await this.dbContext.BlogPosts.Include(x => x.Categories).FirstOrDefaultAsync(x => x.Id == id);
         }
 
+        public async Task<BlogPost> GetByUrlHandleAsync(string urlHandle)
+        {
+            return await this.dbContext.BlogPosts.Include(x => x.Categories).FirstOrDefaultAsync(x => x.UrlHandle == urlHandle);
+        }
+
         public async Task<BlogPost> UpdateAsync(BlogPost blogPost)
         {
             var existingBlogPost = await this.dbContext.BlogPosts.Include(x => x.Categories).FirstOrDefaultAsync(x => x.Id == blogPost.Id);
