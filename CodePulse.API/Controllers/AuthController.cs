@@ -2,6 +2,10 @@
 using CodePulse.API.Repositories.Interface;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Mail;
+using System.Net;
+using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace CodePulse.API.Controllers
 {
@@ -18,6 +22,7 @@ namespace CodePulse.API.Controllers
             this.userManager = userManager;
             this.tokenRepository = tokenRepository;
         }
+
 
         [HttpPost]
         [Route("login")]
@@ -57,6 +62,12 @@ namespace CodePulse.API.Controllers
         [Route("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
+
+            if (!IsValidEmail(request.Email))
+            {
+                ModelState.AddModelError("Email", "Invalid email format");
+                return ValidationProblem(ModelState);
+            }
             // Create IdentityUser Object
             // DTO to Domain
 
@@ -65,18 +76,20 @@ namespace CodePulse.API.Controllers
                 UserName = request.Email?.Trim(),
                 Email = request.Email?.Trim(),
             };
+          
 
            var identityResult = await userManager.CreateAsync(user, request.Password);
 
             if (identityResult.Succeeded)
             {
+
                 // Add Role to User (Reader)
 
-               identityResult = await userManager.AddToRoleAsync(user, "Reader");
+                identityResult = await userManager.AddToRoleAsync(user, "Reader");
 
                 if (identityResult.Succeeded)
                 {
-                    return Ok();
+                    return Ok(user);
                 }
                 else
                 {
@@ -102,5 +115,49 @@ namespace CodePulse.API.Controllers
 
             return ValidationProblem(ModelState);
         }
+
+        private bool IsValidEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            try
+            {
+                // Normalize the domain
+                email = Regex.Replace(email, @"(@)(.+)$", DomainMapper,
+                                      RegexOptions.None, TimeSpan.FromMilliseconds(200));
+
+                // Examines the domain part of the email and normalizes it.
+                string DomainMapper(Match match)
+                {
+                    var idn = new IdnMapping();
+                    var domainName = idn.GetAscii(match.Groups[2].Value);
+                    return match.Groups[1].Value + domainName;
+                }
+            }
+            catch (RegexMatchTimeoutException e)
+            {
+                return false;
+            }
+            catch (ArgumentException e)
+            {
+                return false;
+            }
+
+            try
+            {
+                return Regex.IsMatch(email,
+                    @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+                    RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(250));
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return false;
+            }
+        }
+
     }
-}
+
+    }
+
+

@@ -56,7 +56,7 @@ namespace CodePulse.API.Data
 
             builder.Entity<IdentityUser>().HasData(admin);
 
-            // Give Roles to Amin
+            // Give Roles to Admin
 
             var adminRoles = new List<IdentityUserRole<string>>()
             {

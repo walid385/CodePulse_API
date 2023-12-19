@@ -35,7 +35,7 @@ namespace CodePulse.API.Repositories.Implementation
                 issuer: config["Jwt:Issuer"],
                 audience: config["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(15),
+                expires: DateTime.Now.AddMinutes(150),
                 signingCredentials: credentials);
 
             // Return Token

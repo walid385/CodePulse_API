@@ -1,4 +1,6 @@
-﻿namespace CodePulse.API.Models.DTO
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace CodePulse.API.Models.DTO
 {
     public class RegisterRequestDto
     {

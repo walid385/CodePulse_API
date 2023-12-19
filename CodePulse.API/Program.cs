@@ -46,6 +46,7 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.Password.RequireUppercase = false;
     options.Password.RequiredLength = 6;
     options.Password.RequiredUniqueChars = 1;
+    options.SignIn.RequireConfirmedEmail = true;
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
