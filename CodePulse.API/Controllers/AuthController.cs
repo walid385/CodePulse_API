@@ -6,6 +6,10 @@ using System.Net.Mail;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Globalization;
+using Identity.Models;
+using Microsoft.AspNetCore.WebUtilities;
+using System.Text;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace CodePulse.API.Controllers
 {
@@ -28,136 +32,145 @@ namespace CodePulse.API.Controllers
         [Route("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
-            // Check Email
-           var identityUser = await userManager.FindByEmailAsync(request.Email);
-
-            if (identityUser is not null)
+            // Check if the request, email, or password is null or empty
+            if (request == null || string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
             {
-                // Check Pasword
-                var checkPasswordResult = await userManager.CheckPasswordAsync(identityUser, request.Password);
-
-                if (checkPasswordResult)
-                {
-
-                    var roles = await userManager.GetRolesAsync(identityUser);
-                    // Create a Token and Response
-                   var jwtToken = tokenRepository.CreateJwtToken(identityUser, roles.ToList());
-
-                    var response = new LoginResponseDto()
-                    {
-                        Email = request.Email,
-                        Roles = roles.ToList(),
-                        Token = jwtToken
-                    };
-
-                    return Ok(response);
-                }
+                return BadRequest("Email or password cannot be empty.");
             }
-            ModelState.AddModelError("", "Email or Password Incorrect");
 
-            return ValidationProblem(ModelState);
+            // Attempt to find the user by email
+            var identityUser = await userManager.FindByEmailAsync(request.Email);
+
+            // Check if the user was found
+            if (identityUser == null)
+            {
+                // Return a generic error message to avoid enumeration attacks
+                return BadRequest("Email or Password Incorrect");
+            }
+
+            // Check if the email is confirmed
+            var isEmailConfirmed = await userManager.IsEmailConfirmedAsync(identityUser);
+            if (!isEmailConfirmed)
+            {
+                return BadRequest("Please confirm your email first");
+            }
+
+            // Check the password
+            var checkPasswordResult = await userManager.CheckPasswordAsync(identityUser, request.Password);
+            if (!checkPasswordResult)
+            {
+                // Return a generic error message to avoid enumeration attacks
+                return BadRequest("Email or Password Incorrect");
+            }
+
+            // If the user is found, the email is confirmed, and the password is correct, proceed to generate the token
+            var roles = await userManager.GetRolesAsync(identityUser);
+            var jwtToken = tokenRepository.CreateJwtToken(identityUser, roles.ToList());
+
+            var response = new LoginResponseDto()
+            {
+                Email = request.Email,
+                Roles = roles.ToList(),
+                Token = jwtToken
+            };
+
+            return Ok(response);
         }
+
 
         [HttpPost]
         [Route("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
-
-            if (!IsValidEmail(request.Email))
+            // Validate the incoming request data
+            if (!ModelState.IsValid)
             {
-                ModelState.AddModelError("Email", "Invalid email format");
                 return ValidationProblem(ModelState);
             }
-            // Create IdentityUser Object
-            // DTO to Domain
 
+            // Create a new user with the email from the request
             var user = new IdentityUser
             {
                 UserName = request.Email?.Trim(),
                 Email = request.Email?.Trim(),
             };
-          
 
-           var identityResult = await userManager.CreateAsync(user, request.Password);
-
+            // Attempt to create the user with the specified password
+            var identityResult = await userManager.CreateAsync(user, request.Password);
             if (identityResult.Succeeded)
             {
+                // Add the user to a default role, e.g., "Reader"
+                await userManager.AddToRoleAsync(user, "Reader");
 
-                // Add Role to User (Reader)
+                // Generate an email confirmation token
+                var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
 
-                identityResult = await userManager.AddToRoleAsync(user, "Reader");
-
-                if (identityResult.Succeeded)
+                // Create a confirmation link
+                var codeEncoded = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+                var callbackUrl = $"{this.Request.Scheme}://localhost:4200/confirm-email?token={codeEncoded}&email={WebUtility.UrlEncode(user.Email)}";
+                if (string.IsNullOrEmpty(callbackUrl))
                 {
-                    return Ok(user);
+                    // Log the error or handle accordingly
+                    throw new InvalidOperationException("The confirmation link could not be generated.");
                 }
-                else
+
+                // Send the email
+                EmailHelper emailHelper = new EmailHelper();
+                bool emailResponse = emailHelper.SendEmail(user.Email, callbackUrl);
+
+                // Check if the email was sent successfully
+                if (!emailResponse)
                 {
-                    if (identityResult.Errors.Any())
-                    {
-                        foreach (var error in identityResult.Errors)
-                        {
-                            ModelState.AddModelError("", error.Description);
-                        }
-                    }
+                    // If email sending failed, add an error to ModelState and return a validation problem
+                    ModelState.AddModelError("", "Failed to send confirmation email.");
+                    return ValidationProblem(ModelState);
                 }
+
+                // If email sent successfully, return the user information
+                user.EmailConfirmed = true;
+                return Ok(new JsonResult(new { title = "Thank you!", message = "Please confirm your email now." }));
             }
             else
             {
-                if(identityResult.Errors.Any())
+                // If user creation failed, add each error to the ModelState
+                foreach (var error in identityResult.Errors)
                 {
-                    foreach(var error in identityResult.Errors)
-                    {
-                        ModelState.AddModelError("", error.Description);
-                    }
+                    ModelState.AddModelError("", error.Description);
                 }
+                return ValidationProblem(ModelState);
             }
-
-            return ValidationProblem(ModelState);
         }
 
-        private bool IsValidEmail(string email)
+        [HttpPost("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(ConfirmEmailDto model)
         {
-            if (string.IsNullOrWhiteSpace(email))
-                return false;
+            var user = await userManager.FindByEmailAsync(model.Email);
+            if (user == null) return Unauthorized("This email adress has not been registered yet");
+
+            if (user.EmailConfirmed == true) return BadRequest("Your email is already confirmed, please login.");
 
             try
             {
-                // Normalize the domain
-                email = Regex.Replace(email, @"(@)(.+)$", DomainMapper,
-                                      RegexOptions.None, TimeSpan.FromMilliseconds(200));
+                var decodedTokenBytes = WebEncoders.Base64UrlDecode(model.Token);
+                var decodedToken = Encoding.UTF8.GetString(decodedTokenBytes);
 
-                // Examines the domain part of the email and normalizes it.
-                string DomainMapper(Match match)
+                var result = await userManager.ConfirmEmailAsync(user, decodedToken);
+                if (result.Succeeded)
                 {
-                    var idn = new IdnMapping();
-                    var domainName = idn.GetAscii(match.Groups[2].Value);
-                    return match.Groups[1].Value + domainName;
+                    return Ok(new JsonResult(new { title = "Email Confirmed", message = "Your email is confirmed. You can login now." }));
                 }
-            }
-            catch (RegexMatchTimeoutException e)
-            {
-                return false;
-            }
-            catch (ArgumentException e)
-            {
-                return false;
-            }
 
-            try
-            {
-                return Regex.IsMatch(email,
-                    @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-                    RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(250));
+                return BadRequest("Invalid Token");
             }
-            catch (RegexMatchTimeoutException)
+            catch (Exception)
             {
-                return false;
+                return BadRequest("Invalid Token");
             }
         }
 
-    }
 
     }
+
+}
 
 
