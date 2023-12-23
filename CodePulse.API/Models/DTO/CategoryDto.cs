@@ -1,4 +1,6 @@
-﻿namespace CodePulse.API.Models.DTO
+﻿using CodePulse.API.Models.Domain;
+
+namespace CodePulse.API.Models.DTO
 {
     public class CategoryDto
     {
@@ -7,5 +9,9 @@
         public string Name { get; set; }
 
         public string UrlHandle { get; set; }
+
+        public List<BlogPostDto> BlogPosts { get; set; }
+
+
     }
 }

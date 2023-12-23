@@ -36,9 +36,12 @@ namespace CodePulse.API.Repositories.Implementation
 
         }
 
-        public async Task<IEnumerable<Category>> GetAllAsync()
+        public async Task<IEnumerable<Category>> GetAllWithPostsAsync()
         {
-           return await _dbContext.Categories.ToListAsync();
+            return await _dbContext.Categories
+                                .Include(c => c.BlogPosts)
+                                .ThenInclude(bp => bp.Categories)
+                                .ToListAsync();
         }
 
         public async Task<Category?> GetById(Guid id)

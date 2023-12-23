@@ -48,29 +48,43 @@ namespace CodePulse.API.Controllers
         }
 
         [HttpGet]
-        // GET: https://localhost:7209/api/Categories
-        public async Task<IActionResult> GetAllCategories()
+        [Route("withposts")]
+        public async Task<IActionResult> GetAllCategoriesWithPosts()
         {
-            var categories = await categoryRepository.GetAllAsync();
+            // Fetch categories and their related blog posts
+            var categories = await categoryRepository.GetAllWithPostsAsync();
 
             // Map Domain to DTO
-
-            var response = new List<CategoryDto>();
-
-            foreach (var category in categories)
+            var response = categories.Select(category => new CategoryDto
             {
-                response.Add(new CategoryDto
+                Id = category.Id,
+                Name = category.Name,
+                UrlHandle = category.UrlHandle,
+                // Assuming Category has a navigation property to BlogPosts
+                BlogPosts = category.BlogPosts.Select(bp => new BlogPostDto
                 {
-                    Id = category.Id,
-                    Name = category.Name,
-                    UrlHandle = category.UrlHandle,
-                });
-
-
-            }
+                    Id = bp.Id,
+                    Title = bp.Title,
+                    ShortDescription = bp.ShortDescription,
+                    Content = bp.Content,
+                    FeaturedImageUrl = bp.FeaturedImageUrl,
+                    UrlHandle = bp.UrlHandle,
+                    PublishedDate = bp.PublishedDate,
+                    Author = bp.Author,
+                    isVisible = bp.isVisible,
+                    // Assuming BlogPost has a navigation property to Categories
+                    Categories = bp.Categories.Select(c => new CategoryDto
+                    {
+                        Id = c.Id,
+                        Name = c.Name,
+                        UrlHandle = c.UrlHandle
+                    }).ToList()
+                }).ToList()
+            }).ToList();
 
             return Ok(response);
         }
+
 
         [HttpGet]
         [Route("{id:Guid}")]
@@ -153,7 +167,7 @@ namespace CodePulse.API.Controllers
 
         }
 
+
     }
-    
 
 }
