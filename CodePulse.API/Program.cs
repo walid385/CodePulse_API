@@ -39,6 +39,9 @@ builder.Services.AddIdentityCore<IdentityUser>()
     .AddEntityFrameworkStores<AuthDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.Configure<DataProtectionTokenProviderOptions>(opt =>
+    opt.TokenLifespan = TimeSpan.FromHours(2));
+
 builder.Services.Configure<IdentityOptions>(options =>
 {
     options.Password.RequireDigit = false;

@@ -115,7 +115,7 @@ namespace CodePulse.API.Controllers
                 }
 
                 // Send the email
-                EmailHelper emailHelper = new EmailHelper();
+                EmailHelperConfirmEmail emailHelper = new EmailHelperConfirmEmail();
                 bool emailResponse = emailHelper.SendEmail(user.Email, callbackUrl);
 
                 // Check if the email was sent successfully
@@ -168,6 +168,39 @@ namespace CodePulse.API.Controllers
             }
         }
 
+        [HttpPost("ForgotPassword")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest();
+
+            var user = await userManager.FindByEmailAsync(forgotPasswordDto.Email);
+            if (user == null)
+                return BadRequest("Invalid Request");
+
+            var token = await userManager.GeneratePasswordResetTokenAsync(user);
+            var param = new Dictionary<string, string?>
+            {
+                {"token", token },
+                {"email", forgotPasswordDto.Email }
+            };
+
+            var callback = QueryHelpers.AddQueryString(forgotPasswordDto.ClientURI, param);
+
+            // Send the email
+            EmailHelperForgotPw emailHelper = new EmailHelperForgotPw();
+            bool emailResponse = emailHelper.SendEmail(user.Email, callback);
+
+            // Check if the email was sent successfully
+            if (!emailResponse)
+            {
+                // If email sending failed, add an error to ModelState and return a validation problem
+                ModelState.AddModelError("", "Failed to send reset email.");
+                return ValidationProblem(ModelState);
+            }
+
+            return Ok();
+        }
 
     }
 

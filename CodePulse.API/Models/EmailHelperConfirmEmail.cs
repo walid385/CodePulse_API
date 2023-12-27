@@ -3,7 +3,7 @@ using System.Net.Mail;
 
 namespace Identity.Models
 {
-    public class EmailHelper
+    public class EmailHelperConfirmEmail
     {
         public bool SendEmail(string userEmail, string confirmationLink)
         {
