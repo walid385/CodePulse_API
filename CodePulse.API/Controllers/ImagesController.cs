@@ -1,6 +1,8 @@
-﻿using CodePulse.API.Models.Domain;
+﻿    using CodePulse.API.Models.Domain;
 using CodePulse.API.Models.DTO;
+using CodePulse.API.Repositories.Implementation;
 using CodePulse.API.Repositories.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -78,6 +80,24 @@ namespace CodePulse.API.Controllers
             }
 
             return BadRequest(ModelState);
+        }
+
+        [HttpDelete]
+        [Route("{id:Guid}")]
+        public async Task<IActionResult> DeletebyIdAsync([FromRoute] Guid id)
+        {
+
+           var image=  await imageRepository.DeleteImage(id);
+
+            if (image is null)
+            {
+                return NotFound();
+            }
+
+            var response = new BlogImageDto { Id = image.Id };
+            return Ok(response);
+
+           
         }
 
         private void ValidateFileUpload(IFormFile file)

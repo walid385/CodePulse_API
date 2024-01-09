@@ -1,6 +1,8 @@
 ﻿using CodePulse.API.Data;
 using CodePulse.API.Models.Domain;
 using CodePulse.API.Repositories.Interface;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodePulse.API.Repositories.Implementation
@@ -43,6 +45,21 @@ namespace CodePulse.API.Repositories.Implementation
             await dbcontext.SaveChangesAsync();
             return blogImage;
 
+
+        }
+
+        public async Task<BlogImage> DeleteImage(Guid id)
+        {
+            var existingImage = await dbcontext.BlogImages.FirstOrDefaultAsync(x => x.Id == id);
+
+            if (existingImage != null)
+            {
+                dbcontext.BlogImages.Remove(existingImage);
+               await dbcontext.SaveChangesAsync();
+                return existingImage;
+            }
+
+            return null;
 
         }
     }
