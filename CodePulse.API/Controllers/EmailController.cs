@@ -3,22 +3,22 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
-using CodePulse.API.Data; // Add this if you're manually saving changes to the database
+using CodePulse.API.Data; 
 
 namespace Identity.Controllers
 {
     public class EmailController : Controller
     {
         private readonly UserManager<IdentityUser> userManager;
-        private readonly AuthDbContext context; // Add the DbContext here
+        private readonly AuthDbContext context; 
 
-        public EmailController(UserManager<IdentityUser> userManager, AuthDbContext ctx) // Inject the DbContext
+        public EmailController(UserManager<IdentityUser> userManager, AuthDbContext ctx) 
         {
             this.userManager = userManager;
             this.context = ctx;
         }
 
-        [HttpGet] // Make sure it's a GET request as it's triggered by a link
+        [HttpGet] 
         public async Task<IActionResult> ConfirmEmail(string token, string email)
         {
             var user = await userManager.FindByEmailAsync(email);
@@ -42,7 +42,7 @@ namespace Identity.Controllers
                 return BadRequest(ModelState);
             }
 
-            await context.SaveChangesAsync(); // Save the changes explicitly
+            await context.SaveChangesAsync(); 
 
             return Ok(new { Result = "Email confirmed successfully." });
         }
