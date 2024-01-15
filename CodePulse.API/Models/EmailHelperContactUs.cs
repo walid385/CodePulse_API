@@ -11,7 +11,7 @@ namespace CodePulse.API.Models
                 mailMessage.From = new MailAddress(Email);
                 mailMessage.To.Add(new MailAddress("webps.info@gmail.com"));
 
-                mailMessage.Subject = Name.ToString();
+                mailMessage.Subject = $"From {Name}: {Email}";
                 mailMessage.IsBodyHtml = true;
 
                 // Injecting the HTML template
