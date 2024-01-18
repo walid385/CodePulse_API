@@ -10,6 +10,7 @@ using Identity.Models;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
 using Microsoft.AspNetCore.Http.HttpResults;
+using System.Configuration;
 
 namespace CodePulse.API.Controllers
 {
@@ -19,12 +20,14 @@ namespace CodePulse.API.Controllers
     {
         private readonly UserManager<IdentityUser> userManager;
         private readonly ITokenRepository tokenRepository;
+        private readonly IConfiguration _configuration;
 
         public AuthController(UserManager<IdentityUser> userManager,
-            ITokenRepository tokenRepository)
+            ITokenRepository tokenRepository, IConfiguration _configuration)
         {
             this.userManager = userManager;
             this.tokenRepository = tokenRepository;
+            this._configuration = _configuration;
         }
 
 
@@ -107,7 +110,8 @@ namespace CodePulse.API.Controllers
 
                 // Create a confirmation link
                 var codeEncoded = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-                var callbackUrl = $"{this.Request.Scheme}://localhost:4200/confirm-email?token={codeEncoded}&email={WebUtility.UrlEncode(user.Email)}";
+                var baseUrl = _configuration.GetValue<string>("BaseUrl");
+                var callbackUrl = $"{baseUrl}/confirm-email?token={codeEncoded}&email={WebUtility.UrlEncode(user.Email)}";
                 if (string.IsNullOrEmpty(callbackUrl))
                 {
                     // Log the error or handle accordingly
