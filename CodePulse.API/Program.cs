@@ -25,7 +25,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("CodePulseConnectionString"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("AuthDbConnectionString"));
 });
 
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
